@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gelson-dev",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public"
+  },
+  "routes": [
+    { "pattern": "gelson.dev", "custom_domain": true },
+    { "pattern": "www.gelson.dev", "custom_domain": true }
+  ]
+}
