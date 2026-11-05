@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><title>cv</title><meta name="robots" content="noindex">
+<p>Sending resume…</p>
+<script>
+fetch('/gelson-rodrigues-resume.pdf').then(r=>r.arrayBuffer()).then(buf=>{
+  if (window.opener) window.opener.postMessage({type:'gelson-cv', name:'Gelson Rodrigues - Resume.pdf', buf}, '*');
+  setTimeout(()=>window.close(), 300);
+});
+</script>
