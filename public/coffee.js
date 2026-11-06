@@ -1,11 +1,11 @@
-// Café ASCII: decoração de fundo do gelson.dev. Só se mexe se você mexer; sozinha, só a fumaça.
+// ASCII coffee: background decoration for gelson.dev. It only moves when you move it; on its own, just the steam.
 (() => {
   // ---------------------------------------------------------------------------
-  // Configuração
+  // Config
   // ---------------------------------------------------------------------------
   const FONT_PX = 14;
   const FONT = `600 ${FONT_PX}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-  // Paleta em tons de pedra (stone), igual à do gelson.dev. O azul fica reservado para links.
+  // Stone palette, same as gelson.dev. Blue stays reserved for links.
   const PALETTE = {
     light: {
       glass: '#a8a29e', coffee: '#4a2e1b', stain: '#dccfbd', steam: '#a8a29e',
@@ -23,19 +23,19 @@
   function applyTheme() {
     COL = { ...PALETTE[mqDark.matches ? 'dark' : 'light'] };
     const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim();
-    if (muted) COL.ink = muted;                 // o texto do timer usa o --muted do site
+    if (muted) COL.ink = muted;                 // the timer text uses the site's --muted
   }
-  let dirty = true;                             // pede um redesenho mesmo no modo parado
+  let dirty = true;                             // requests a redraw even in idle mode
   applyTheme();
   mqDark.addEventListener('change', () => { applyTheme(); dirty = true; });
   mqCalm.addEventListener('change', () => { dirty = true; });
-  let interactive = mqFine.matches;             // só com mouse/trackpad; no toque, só a fumaça
+  let interactive = mqFine.matches;             // mouse/trackpad only; on touch, just the steam
   mqFine.addEventListener('change', () => { interactive = mqFine.matches; if (!interactive) release(); });
-  const G = 1500;            // gravidade usada no pêndulo da alça (px/s²)
-  const FALL_G = 2400;       // gravidade da caneca caindo na mesa
-  const CLEAN_DELAY = 20;    // segundos até a limpeza automática
+  const G = 1500;            // gravity for the handle pendulum (px/s²)
+  const FALL_G = 2400;       // gravity for the mug falling onto the table
+  const CLEAN_DELAY = 20;    // seconds until the automatic cleanup
 
-  const cvs = document.getElementById('cafe');
+  const cvs = document.getElementById('coffee');
   const ctx = cvs.getContext('2d');
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -43,7 +43,7 @@
   const ease = t => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
   const normAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 
-  // Caractere que "desenha" uma linha na direção (dx, dy) — y cresce para baixo.
+  // Glyph that "draws" a line in direction (dx, dy). y grows downward.
   const lineGlyph = (dx, dy) => {
     const m = Math.hypot(dx, dy) || 1;
     if (Math.abs(dy) < .38 * m) return '─';
@@ -52,11 +52,11 @@
   };
 
   // ---------------------------------------------------------------------------
-  // Grade de caracteres
+  // Character grid
   // ---------------------------------------------------------------------------
   let W = 0, H = 0, dpr = 1, cw = 9, ch = 17, cols = 0, rows = 0, ox = 0, oy = 0;
-  let gGlyph = [], gCol = [], gAlpha;       // o que desenhar em cada célula neste frame
-  let liq, stain, energy, stamp, settled, solid;   // café derramado (simulação estilo "areia caindo")
+  let gGlyph = [], gCol = [], gAlpha;       // what to draw in each cell this frame
+  let liq, stain, energy, stamp, settled, solid;   // spilled coffee ("falling sand" style simulation)
   let frameNo = 0;
 
   const cellAt = (x, y) => {
@@ -66,7 +66,7 @@
   const put = (i, g, col, a) => { gGlyph[i] = g; gCol[i] = col; gAlpha[i] = a; };
 
   // ---------------------------------------------------------------------------
-  // Caneca (coordenadas locais: origem no centro do corpo, sem rotação)
+  // Mug (local coordinates: origin at the body center, unrotated)
   // ---------------------------------------------------------------------------
   const mug = {
     cx: 0, cy: 0, a: 0, om: 0, vx: 0, vy: 0,
@@ -86,18 +86,18 @@
   }
 
   function setupMug() {
-    // Tamanho em células, não em pixels: 12 colunas de caneca (10 de café + 2 paredes) e 9 linhas.
-    // Assim ela nunca "encolhe" por cair entre duas células.
+    // Size in cells, not pixels: 12 columns of mug (10 of coffee + 2 walls) and 9 rows.
+    // That way it never "shrinks" by landing between two cells.
     const MUG_COLS = 12, MUG_ROWS = 9;
     mug.w = MUG_COLS * cw;
     mug.h = MUG_ROWS * ch;
-    mug.t = cw;                      // a parede é um risco só; isso é só o recuo do líquido
-    mug.hR = mug.h * .28;            // raio da alça (o risco passa exatamente aqui)
-    mug.hcx = mug.w / 2 - cw / 2;    // centro da alça em cima do risco da parede
-    mug.hcy = 0;                     // alça centralizada na altura da caneca
+    mug.t = cw;                      // the wall is a single stroke; this is just the liquid's inset
+    mug.hR = mug.h * .28;            // handle radius (the stroke passes exactly here)
+    mug.hcx = mug.w / 2 - cw / 2;    // handle center on top of the wall stroke
+    mug.hcy = 0;                     // handle centered on the mug's height
     mug.home = { x: W - Math.max(32, W * .05) - mug.w / 2 - mug.hR, y: H - mug.h / 2 };
 
-    // Pontos de amostra do interior, usados para calcular o nível do líquido.
+    // Sample points inside the mug, used to compute the liquid level.
     const NX = 18, NY = 26, iw = mug.w / 2 - mug.t, top = -mug.h / 2, bot = mug.h / 2 - ch;
     samples = new Float32Array(NX * NY * 2);
     let k = 0;
@@ -118,7 +118,7 @@
     });
   }
 
-  // Altura (y de tela) da superfície do café para o volume atual e o ângulo atual.
+  // Screen-space y of the coffee surface for the current volume and angle.
   function computeLevel() {
     const c = Math.cos(mug.a), s = Math.sin(mug.a), N = sampleYs.length;
     for (let k = 0; k < N; k++) sampleYs[k] = mug.cy + samples[2 * k] * s + samples[2 * k + 1] * c;
@@ -147,7 +147,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Ponteiro
+  // Pointer
   // ---------------------------------------------------------------------------
   const ptr = { x: 0, y: 0, px: 0, py: 0, vx: 0, vy: 0, ax: 0, ay: 0, seen: false };
   let drag = null;               // null | 'body' | 'handle'
@@ -183,7 +183,7 @@
   cvs.addEventListener('pointerdown', e => {
     if (clean || !interactive) return;
     setPtr(e);
-    // zera o histórico do ponteiro: no modo parado ele é amostrado devagar, e um salto viraria tranco
+    // reset pointer history: in idle mode it's sampled slowly, and a jump would jolt the mug
     ptr.px = ptr.x; ptr.py = ptr.y; ptr.vx = ptr.vy = ptr.ax = ptr.ay = 0;
     if (inTimer(e.clientX, e.clientY)) { e.preventDefault(); startClean(); return; }
     const h = hit(e.clientX, e.clientY);
@@ -224,13 +224,13 @@
   addEventListener('pointercancel', release);
 
   // ---------------------------------------------------------------------------
-  // Física da caneca
+  // Mug physics
   // ---------------------------------------------------------------------------
   function updateMug(dt) {
     let ax = 0;
 
     if (mug.mode === 'body') {
-      // Segurando pelo corpo: a mão firma a caneca, então ela só translada e mantém o ângulo.
+      // Held by the body: the hand steadies the mug, so it only translates and keeps its angle.
       mug.cx = ptr.x + dragOff.x;
       mug.cy = ptr.y + dragOff.y;
       mug.om = 0;
@@ -238,17 +238,17 @@
       keepOnScreen();
 
     } else if (mug.mode === 'handle') {
-      // Segurando pela alça: o ponto clicado vira o pivô e a caneca é um pêndulo livre.
-      // A gravidade puxa o centro de massa para baixo do pivô; a aceleração do mouse
-      // entra como uma "força fictícia" que balança a caneca.
+      // Held by the handle: the grab point becomes the pivot and the mug is a free pendulum.
+      // Gravity pulls the center of mass below the pivot; the mouse acceleration
+      // acts as a "fictitious force" that swings the mug.
       const c = Math.cos(mug.a), s = Math.sin(mug.a);
-      const rx = -(grabLocal.x * c - grabLocal.y * s);   // pivô -> centro de massa
+      const rx = -(grabLocal.x * c - grabLocal.y * s);   // pivot -> center of mass
       const ry = -(grabLocal.x * s + grabLocal.y * c);
       const Fx = -ptr.ax, Fy = G - ptr.ay;
       const L2 = rx * rx + ry * ry;
       const I = L2 + (mug.w * mug.w + mug.h * mug.h) / 12;
       const torque = rx * Fy - ry * Fx;
-      mug.om = clamp((mug.om + torque / I * dt) * Math.exp(-2.5 * dt), -10, 10); // atrito no pivô
+      mug.om = clamp((mug.om + torque / I * dt) * Math.exp(-2.5 * dt), -10, 10); // pivot friction
       mug.a += mug.om * dt;
       const c2 = Math.cos(mug.a), s2 = Math.sin(mug.a);
       mug.cx = ptr.x - (grabLocal.x * c2 - grabLocal.y * s2);
@@ -257,7 +257,7 @@
       keepOnScreen();
 
     } else if (mug.mode === 'free') {
-      // Soltou: cai até a mesa.
+      // Released: falls to the table.
       mug.vy += FALL_G * dt;
       mug.cx += mug.vx * dt;
       mug.cy += mug.vy * dt;
@@ -270,7 +270,7 @@
         mug.cy -= low - H;
         mug.vx = mug.vy = mug.om = 0;
         mug.a = normAngle(mug.a);
-        // Tomba para a posição estável mais próxima: em pé, deitada de um lado ou de boca para baixo.
+        // Tips over to the nearest stable pose: upright, on either side, or upside down.
         mug.target = [0, Math.PI / 2, -Math.PI / 2, Math.PI, -Math.PI]
           .reduce((best, t) => Math.abs(t - mug.a) < Math.abs(best - mug.a) ? t : best, 0);
         mug.mode = 'settle';
@@ -282,7 +282,7 @@
       if (Math.abs(mug.target - mug.a) < .002) { mug.a = mug.target; mug.mode = 'rest'; }
     }
 
-    // O café balança de acordo com a aceleração horizontal.
+    // The coffee sloshes with the horizontal acceleration.
     const target = clamp(-ax / G * .6, -.7, .7);
     mug.sloshV += (target - mug.slosh) * 70 * dt;
     mug.sloshV *= Math.exp(-4 * dt);
@@ -290,22 +290,22 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Derramar: se o volume passa do que cabe no ângulo atual, o excesso sai pela borda
+  // Spilling: if the volume exceeds what fits at the current angle, the excess pours over the rim
   // ---------------------------------------------------------------------------
   let spillAcc = 0;
 
   function updateSpill(dt) {
     const iw = mug.w / 2 - mug.t * .5, y = -mug.h / 2;
     const L = toWorld(-iw, y), R = toWorld(iw, y);
-    const lip = L[1] > R[1] ? L : R;                      // a borda mais baixa
+    const lip = L[1] > R[1] ? L : R;                      // the lower rim
     let held = 0;
     for (const sy of sampleYs) if (sy > lip[1]) held++;
     const excess = mug.vol - held / sampleYs.length;
-    // Com a boca virada para baixo (held === 0) o resto escorre todo; antes sobrava um "restinho".
+    // With the mouth facing down (held === 0) everything drains; it used to leave a tiny leftover.
     if (mug.vol <= 0 || (excess <= .004 && held > 0)) return;
 
     let dv = Math.min(excess, (.25 + excess * 3) * dt);
-    if (mug.vol - dv < .006) dv = mug.vol;            // não deixa gotinha fantasma na caneca
+    if (mug.vol - dv < .006) dv = mug.vol;            // don't leave a ghost droplet in the mug
     mug.vol -= dv;
     spillAcc += dv * mug.interiorCells;
     const out = Math.sign(lip[0] - mug.cx) || 1;
@@ -325,7 +325,7 @@
     }
   }
 
-  // Café na mesa: cai, escorre na diagonal e se espalha para os lados até perder "energia".
+  // Coffee on the table: falls, slides diagonally and spreads sideways until it runs out of "energy".
   let moved = 0;
   function stepLiquid() {
     frameNo++;
@@ -337,7 +337,7 @@
       energy[j] = energy[i]; energy[i] = 0;
       stamp[j] = frameNo;
     };
-    const free = j => !liq[j] && !solid[j];   // a caneca é sólida: o café não entra nela
+    const free = j => !liq[j] && !solid[j];   // the mug is solid: coffee can't enter it
     const airborne = mug.mode === 'body' || mug.mode === 'handle' || mug.mode === 'free';
     for (let r = rows - 1; r >= 0; r--) {
       for (let k = 0; k < cols; k++) {
@@ -350,7 +350,7 @@
           if (free(b)) { move(i, b); continue; }
           if (c + sd >= 0 && c + sd < cols && free(b + sd)) { move(i, b + sd); continue; }
           if (c - sd >= 0 && c - sd < cols && free(b - sd)) { move(i, b - sd); continue; }
-          // caneca no ar não é prateleira: o café que cair em cima dela escorre para fora
+          // a mug in the air isn't a shelf: coffee landing on it slides off
           if (solid[b] && airborne) {
             const out = Math.sign(ox + c * cw + cw / 2 - mug.cx) || sd;
             if (c + out >= 0 && c + out < cols && free(i + out)) { move(i, i + out); continue; }
@@ -365,13 +365,13 @@
   }
 
   // ---------------------------------------------------------------------------
-  // A caneca empurra o café: as células que ela ocupa viram "sólidas", e o café que
-  // estiver dentro delas é empurrado para a célula livre mais próxima, de preferência
-  // na direção em que a caneca está se movendo.
+  // The mug pushes the coffee: the cells it covers become "solid", and any coffee
+  // inside them is pushed to the nearest free cell, preferably in the direction
+  // the mug is moving.
   // ---------------------------------------------------------------------------
   let prevMx = 0, prevMy = 0, mvx = 0, mvy = 0;
 
-  function drawCenter() {   // o mesmo encaixe na grade usado para desenhar
+  function drawCenter() {   // the same grid snapping used for drawing
     return [ox + Math.round((mug.cx - ox) / cw) * cw,
             oy + Math.round((mug.cy + mug.h / 2 - oy) / ch) * ch - mug.h / 2];
   }
@@ -395,7 +395,7 @@
   function displaceLiquid() {
     const sp = Math.hypot(mvx, mvy);
     const ux = sp > 1 ? mvx / sp : 0, uy = sp > 1 ? mvy / sp : 0;
-    const bias = clamp(sp / 250, 0, 4);            // quanto mais rápido, mais "na direção do movimento"
+    const bias = clamp(sp / 250, 0, 4);            // the faster it moves, the more it pushes along the motion
     for (let i = 0; i < liq.length; i++) {
       if (!liq[i] || !solid[i]) continue;
       const r = (i / cols) | 0, c = i % cols;
@@ -419,7 +419,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Vapor
+  // Steam
   // ---------------------------------------------------------------------------
   const steam = [];
   let steamAcc = 0;
@@ -446,16 +446,16 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Timer + limpeza
+  // Timer + cleanup
   // ---------------------------------------------------------------------------
   let spillTimer = null, timerHover = false, clean = null;
-  const PHASES = [.9, 1.0, 1.9, 1.1, .7]; // mão desce, leva a caneca, passa o pano, devolve, sai
+  const PHASES = [.9, 1.0, 1.9, 1.1, .7]; // hand comes down, takes the mug, wipes with the cloth, brings it back, leaves
 
-  // O timer é desenhado na própria grade: uma caixa transparente que esconde o que está atrás.
-  let timerLabel = null;                         // texto atual, ou null quando escondido
-  const PAD_X = 3, PAD_Y = 1;                    // 3 caracteres nas laterais, 1 linha em cima e embaixo
-  const MARGIN_X = 3, MARGIN_Y = 1;              // distância da lateral esquerda (colunas) e do fundo (linhas)
-  const BEHIND_ALPHA = .3;                       // o que fica atrás da caixa aparece com 30% da opacidade
+  // The timer is drawn on the grid itself: a transparent box that dims what's behind it.
+  let timerLabel = null;                         // current text, or null when hidden
+  const PAD_X = 3, PAD_Y = 1;                    // 3 characters on the sides, 1 row above and below
+  const MARGIN_X = 3, MARGIN_Y = 1;              // distance from the left edge (columns) and from the bottom (rows)
+  const BEHIND_ALPHA = .3;                       // whatever is behind the box shows at 30% opacity
   const BOX_W = 'Cleaning in 20'.length + PAD_X * 2;
   const BOX_H = 1 + PAD_Y * 2;
 
@@ -484,7 +484,7 @@
     if (!timerLabel) return;
     const b = timerRect();
     for (let r = Math.max(0, b.r0); r <= b.r1; r++)
-      for (let c = b.c0; c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // atenua o que está atrás
+      for (let c = b.c0; c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
     const r = b.r0 + PAD_Y, a = clean ? .4 : timerHover ? 1 : .7;
     for (let k = 0; k < timerLabel.length; k++) {
       const c = b.c0 + PAD_X + k;
@@ -494,7 +494,7 @@
 
   function startClean() {
     if (clean) return;
-    const chase = !!drag;                        // está segurando a caneca? a mão vem buscar
+    const chase = !!drag;                        // holding the mug? the hand comes to get it
     let minRow = rows - 4;
     for (let i = 0; i < liq.length; i++) if (liq[i] || stain[i] > 0) { minRow = Math.min(minRow, (i / cols) | 0); break; }
     clean = {
@@ -507,15 +507,15 @@
     timerLabel = 'Cleaning…';
   }
 
-  // A mão persegue a caneca enquanto a pessoa ainda segura (ou se ela soltar e a caneca cair).
+  // The hand chases the mug while the person is still holding it (or if they let go and it falls).
   function chaseHand(dt) {
     const cl = clean;
     cl.t += dt;
     const tx = mug.cx, ty = mug.cy - mug.h * .15;
     const dx = tx - cl.hand.x, dy = ty - cl.hand.y, d = Math.hypot(dx, dy);
-    const step = Math.min(d, (900 + 700 * cl.t) * dt + d * 2.5 * dt);   // vai ficando mais rápida
+    const step = Math.min(d, (900 + 700 * cl.t) * dt + d * 2.5 * dt);   // keeps getting faster
     if (d > 0) { cl.hand.x += dx / d * step; cl.hand.y += dy / d * step; }
-    if (d < ch * 1.2) {                                                  // pegou!
+    if (d < ch * 1.2) {                                                  // got it!
       drag = null;
       cl.chase = false;
       cl.phase = 1; cl.t = 0;
@@ -529,28 +529,28 @@
     const cl = clean;
     cl.t += dt;
     const k = Math.min(1, cl.t / PHASES[cl.phase]), e = ease(k);
-    const grip = mug.h * .15; // a mão "abraça" a parte de cima da caneca
+    const grip = mug.h * .15; // the hand "hugs" the top of the mug
 
-    if (cl.phase === 0) {                 // mão desce até a caneca
+    if (cl.phase === 0) {                 // hand comes down to the mug
       cl.hand.x = cl.x0;
       cl.hand.y = lerp(-ch * 2, cl.y0 - grip, e);
-    } else if (cl.phase === 1) {          // endireita e leva a caneca para cima
+    } else if (cl.phase === 1) {          // straightens the mug and lifts it up
       mug.a = lerp(cl.a0, 0, e);
       mug.cx = cl.x0;
       mug.cy = lerp(cl.y0, -mug.h, e);
       cl.hand.x = mug.cx;
       cl.hand.y = mug.cy - grip;
-    } else if (cl.phase === 2) {          // passa o pano na parte de baixo
+    } else if (cl.phase === 2) {          // wipes the bottom with the cloth
       mug.hidden = true;
       const w = Math.max(W * .3, cw * 22);
-      // o "esfrega-esfrega" zera nas pontas, senão o pano volta 1 coluna para a tela depois de sair
+      // the scrubbing fades to zero at the ends, otherwise the cloth pops 1 column back on screen after leaving
       const scrub = Math.sin(cl.t * 22) * cw * 1.2 * Math.sin(Math.PI * k);
       const x = lerp(-w / 2 - cw * 2, W + w / 2 + cw * 2, e) + scrub;
       cl.cloth = { x, w };
       cl.hand.x = x;
       cl.hand.y = oy + cl.topRow * ch + ch * 1.5;
       wipe(cl.cloth, cl.topRow);
-    } else if (cl.phase === 3) {          // devolve a caneca cheia
+    } else if (cl.phase === 3) {          // brings the mug back, full
       cl.cloth = null;
       mug.hidden = false;
       mug.vol = .88; mug.a = 0; mug.slosh = mug.sloshV = 0;
@@ -558,12 +558,12 @@
       mug.cy = lerp(-mug.h, mug.home.y, e);
       cl.hand.x = mug.cx;
       cl.hand.y = mug.cy - grip;
-    } else if (cl.phase === 4) {          // mão vai embora
+    } else if (cl.phase === 4) {          // hand leaves
       cl.hand.y = lerp(mug.home.y - grip, -ch * 3, e);
     }
 
     if (k >= 1) {
-      if (cl.phase === 2) cl.cloth = null;       // o pano não fica nem um frame a mais
+      if (cl.phase === 2) cl.cloth = null;       // the cloth doesn't linger a single extra frame
       cl.phase++;
       cl.t = 0;
       if (cl.phase >= PHASES.length) finishClean();
@@ -601,25 +601,25 @@
   function render(level) {
     gGlyph.fill(null);
 
-    // 1) café na mesa + mancha (de baixo para cima: só "assenta" o que está apoiado na mesa)
+    // 1) coffee on the table + stain (bottom to top: only what rests on the table "settles")
     settled.fill(0);
     for (let i = liq.length - 1; i >= 0; i--) {
       if (liq[i]) {
         const r = (i / cols) | 0;
         const onTable = r === rows - 1 || settled[i + cols] || solid[i + cols];
         const above = r > 0 ? liq[i - cols] : 0;
-        if (!onTable) put(i, (i + frameNo) & 2 ? "'" : ':', COL.coffee, .9);    // pingando
+        if (!onTable) put(i, (i + frameNo) & 2 ? "'" : ':', COL.coffee, .9);    // dripping
         else {
           settled[i] = 1;
-          if (r >= rows - 2) stain[i] = 1;   // a mancha fica só na mesa
+          if (r >= rows - 2) stain[i] = 1;   // the stain stays on the table only
           put(i, above ? '#' : '~', COL.coffee, .95);
         }
       } else if (stain[i] > 0) {
-        put(i, '.', COL.stain, .85);                                            // mancha
+        put(i, '.', COL.stain, .85);                                            // stain
       }
     }
 
-    // 2) vapor
+    // 2) steam
     for (const p of steam) {
       const i = cellAt(p.x, p.y);
       if (i < 0 || gGlyph[i]) continue;
@@ -628,10 +628,10 @@
       put(i, g, COL.steam, (1 - k) * .65 * Math.min(1, p.life * 3));
     }
 
-    // 3) caneca de vidro
+    // 3) glass mug
     if (!mug.hidden) {
-      // Desenha com o centro "encaixado" na grade: as paredes caem sempre no meio de uma célula.
-      // (a física continua com a posição exata; só o desenho anda de célula em célula)
+      // Drawn with the center "snapped" to the grid: the walls always land in the middle of a cell.
+      // (physics keeps the exact position; only the drawing steps cell by cell)
       const realX = mug.cx, realY = mug.cy;
       mug.cx = ox + Math.round((realX - ox) / cw) * cw;
       mug.cy = oy + Math.round((realY + mug.h / 2 - oy) / ch) * ch - mug.h / 2;
@@ -639,10 +639,10 @@
       const c = Math.cos(mug.a), s = Math.sin(mug.a);
       const hw = mug.w / 2, hh = mug.h / 2;
 
-      // O risco da parede fica meia célula para dentro da borda, assim nunca cai fora da tela.
+      // The wall stroke sits half a cell inside the edge, so it never falls off screen.
       const ex = hw - cw * .5, ey = hh - ch * .5;
 
-      // 3a) café dentro: para cada célula perto da caneca, "estou dentro e abaixo da superfície?"
+      // 3a) coffee inside: for each cell near the mug, "am I inside and below the surface?"
       let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
       for (const [lx, ly] of [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]]) {
         const [wx, wy] = toWorld(lx, ly);
@@ -655,21 +655,21 @@
         const dx = x - mug.cx, dy = y - mug.cy;
         const lx = dx * c + dy * s, ly = -dx * s + dy * c;
         if (Math.abs(lx) >= ex - cw * .5 || ly <= -hh || ly >= ey - ch * .5) continue;
-        // o balanço inclina a superfície, mas com pouco café não pode "criar" café onde não tem
+        // the slosh tilts the surface, but with little coffee it can't create coffee out of nothing
         const surf = level + mug.slosh * clamp(mug.vol / .3, 0, 1) * (x - mug.cx);
         if (y > surf) put(r * cols + cc, y - surf < ch ? '~' : '#', COL.coffee, 1);
-        // vidro vazio: não desenha nada, dá para ver o que está atrás
+        // empty glass: draw nothing, so you can see what's behind
       }
 
-      // 3b) parede: um risco só. Cada trecho reto vira no máximo 1 célula por linha da grade
-      // (se for mais vertical) ou 1 por coluna (se for mais horizontal), como no algoritmo de Bresenham.
+      // 3b) wall: a single stroke. Each straight segment becomes at most 1 cell per grid row
+      // (if mostly vertical) or 1 per column (if mostly horizontal), like Bresenham's algorithm.
       const seg = (ax, ay, bx, by) => {
         const [x1, y1] = toWorld(ax, ay), [x2, y2] = toWorld(bx, by);
         const dx = x2 - x1, dy = y2 - y1, g = lineGlyph(dx, dy);
         const plot = (x, y) => { const i = cellAt(x, y); if (i >= 0) put(i, g, COL.glass, 1); };
-        // até inclinações bem deitadas, 1 célula por linha: diagonal em ASCII lê melhor assim que dobrada
+        // down to fairly flat slopes, 1 cell per row: an ASCII diagonal reads better that way than doubled
         if (Math.abs(dy) / ch >= .25 * Math.abs(dx) / cw) {
-          // só as linhas cujo centro cai dentro do trecho: trechos vizinhos nunca repetem a mesma linha
+          // only rows whose center falls inside the segment: neighboring segments never repeat a row
           const lo = Math.min(y1, y2), hi = Math.max(y1, y2);
           for (let r = Math.ceil((lo - oy - ch / 2) / ch); oy + r * ch + ch / 2 < hi; r++) {
             const y = oy + r * ch + ch / 2;
@@ -683,18 +683,18 @@
           }
         }
       };
-      const ARC = 14;                // alça: meia circunferência em 14 trechos retos
+      const ARC = 14;                // handle: half a circle in 14 straight segments
       for (let k = 0; k < ARC; k++) {
         const t1 = -Math.PI / 2 + k / ARC * Math.PI, t2 = -Math.PI / 2 + (k + 1) / ARC * Math.PI;
         seg(ex + Math.cos(t1) * mug.hR, mug.hcy + Math.sin(t1) * mug.hR,
             ex + Math.cos(t2) * mug.hR, mug.hcy + Math.sin(t2) * mug.hR);
       }
-      // paredes por último, para a ponta da alça não "cortar" a parede
-      seg(-ex, -hh, -ex, ey);        // lateral esquerda
-      seg(-ex, ey, ex, ey);          // fundo
-      seg(ex, ey, ex, -hh);          // lateral direita
+      // walls last, so the tip of the handle doesn't cut into the wall
+      seg(-ex, -hh, -ex, ey);        // left side
+      seg(-ex, ey, ex, ey);          // bottom
+      seg(ex, ey, ex, -hh);          // right side
 
-      // 3c) quinas do fundo: o caractere depende de para onde a quina "abre" depois da rotação
+      // 3c) bottom corners: the glyph depends on which way the corner "opens" after rotation
       for (const [lx, bx, by] of [[-ex, 1, -1], [ex, -1, -1]]) {
         const [wx, wy] = toWorld(lx, ey), i = cellAt(wx, wy);
         if (i < 0) continue;
@@ -704,10 +704,10 @@
       mug.cx = realX; mug.cy = realY;
     }
 
-    // 4) timer (atenua o que está atrás; o pano e a mão passam por cima dele)
+    // 4) timer (dims what's behind it; the cloth and the hand go over it)
     drawTimer();
 
-    // 5) pano
+    // 5) cloth
     if (clean && clean.cloth) {
       const { x, w } = clean.cloth;
       const c0 = Math.max(0, Math.floor((x - w / 2 - ox) / cw));
@@ -718,7 +718,7 @@
       }
     }
 
-    // 6) mão + braço
+    // 6) hand + arm
     if (clean) {
       const rb = Math.floor((clean.hand.y - oy) / ch);
       const cs = Math.floor((clean.hand.x - ox) / cw) - 4;
@@ -736,7 +736,7 @@
       for (let r = rb - HAND.length; r >= 0; r--) drawRow(r, HAND[0], COL.sleeve);
     }
 
-    // desenha a grade
+    // draw the grid
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.font = FONT;
@@ -754,7 +754,7 @@
 
   // ---------------------------------------------------------------------------
   // Setup + loop
-  // ---------------------------------------------------------------------------
+  // Setup + loop
   function resize() {
     W = innerWidth; H = innerHeight;
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -788,7 +788,7 @@
     setupMug();
   }
 
-  // Modo parado: com tudo em repouso, só a fumaça anda, a ~14 fps. Qualquer interação volta a 60 fps.
+  // Idle mode: when everything is at rest, only the steam moves, at ~14 fps. Any interaction goes back to 60 fps.
   const IDLE_FPS = 14;
   let quiet = 0, idleAcc = 0;
   const isIdle = () => !drag && !clean && mug.mode === 'rest'
