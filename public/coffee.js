@@ -524,7 +524,7 @@
   }
 
   function updateTimer(dt) {
-    if (clean) { timerLabel = 'Cleaning…'; return; }
+    if (clean) { timerLabel = clean.timerWiped ? null : 'Cleaning…'; return; }
     if (spillTimer === null) { timerLabel = null; timerHover = false; return; }
     if (!timerHover) spillTimer -= dt;
     if (spillTimer <= 0) { startClean(); return; }
@@ -534,11 +534,14 @@
   function drawTimer() {
     if (!timerLabel) return;
     const b = timerRect();
+    // the cloth wipes the timer too: every column it has already passed is gone
+    const wiped = clean && clean.wipeCol != null ? clean.wipeCol : -1;
     for (let r = Math.max(0, b.r0); r <= b.r1; r++)
-      for (let c = b.c0; c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
+      for (let c = Math.max(b.c0, wiped + 1); c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
     const r = b.r0 + PAD_Y, a = clean ? .4 : timerHover ? 1 : .7;
     for (let k = 0; k < timerLabel.length; k++) {
       const c = b.c1 - PAD_X - (timerLabel.length - 1) + k;   // right-aligned, toward the mug
+      if (c <= wiped) continue;
       if (timerLabel[k] !== ' ' && c < cols && r >= 0) put(r * cols + c, timerLabel[k], COL.ink, a);
     }
   }
@@ -598,6 +601,9 @@
       const scrub = Math.sin(cl.t * 22) * cw * 1.2 * Math.sin(Math.PI * k);
       const x = lerp(-w / 2 - cw * 2, W + w / 2 + cw * 2, e) + scrub;
       cl.cloth = { x, w };
+      // the cloth's leading (right) edge wipes the timer as it passes
+      cl.wipeCol = Math.max(cl.wipeCol ?? -1, Math.floor((x + w / 2 - ox) / cw));
+      if (cl.wipeCol >= timerRect().c1) cl.timerWiped = true;
       cl.hand.x = x;
       cl.hand.y = oy + cl.topRow * ch + ch * 1.5;
       wipe(cl.cloth, cl.topRow);
