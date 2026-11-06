@@ -77,10 +77,8 @@
        Input is read by coffee.js at the window level, so the canvas itself ignores the pointer. */
     #coffee { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -1; pointer-events: none; }
     @media (prefers-reduced-motion: no-preference) { #coffee { transition: opacity 0.3s ease; } }
-    /* the "table": empty space at the end of the page for touch screens, where a finger can't grab
-       the mug behind the text. With a mouse the mug can be grabbed anywhere, so no table there. */
-    .coffee-table { display: none; }
-    @media not ((hover: hover) and (pointer: fine)) { .coffee-table { display: block; height: 50vh; } }
+    /* the "table": empty space at the end of the page where the mug can be played with, on any screen */
+    .coffee-table { height: 50vh; }
   </style>
 </head>
 <body>

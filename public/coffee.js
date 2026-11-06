@@ -178,10 +178,9 @@
   }
 
   // The canvas sits behind the page (pointer-events: none), so input is read at the window level.
-  // Mouse: the mug can be grabbed anywhere, even behind text, except over a link or control.
-  // Touch: only through the "grip", an invisible box over the mug that exists only while the
-  // mug sits over empty space (the side gutter or the table at the end of the page), so it
-  // never blocks scrolling over the text.
+  // The mug is grabbed only through the "grip", an invisible box over it that exists only while
+  // the mug sits over empty space (the side gutter or the table at the end of the page). Behind
+  // the text it's just background: clicks select text and touches scroll, as usual.
   const setCursor = c => { document.documentElement.style.cursor = c; };
   const isControl = t => !!(t && t.closest && t.closest('a, button, input, textarea, select, label, summary'));
 
@@ -194,7 +193,9 @@
     if (clean) return;
     const touch = e.pointerType !== 'mouse';
     if (isControl(e.target)) return;
-    if (touch && e.target !== grip && !inTimer(e.clientX, e.clientY)) return;
+    // the mug only reacts through the grip, which exists only while it sits over empty space:
+    // behind the text it's just background, for mouse and touch alike
+    if (e.target !== grip && !inTimer(e.clientX, e.clientY)) return;
     setPtr(e);
     // reset pointer history: in idle mode it's sampled slowly, and a jump would jolt the mug
     ptr.px = ptr.x; ptr.py = ptr.y; ptr.vx = ptr.vy = ptr.ax = ptr.ay = 0;
@@ -224,7 +225,7 @@
     timerHover = !drag && inTimer(e.clientX, e.clientY);
     if (!drag && !clean) {
       const onControl = isControl(e.target);
-      setCursor(onControl ? '' : timerHover ? 'pointer' : hit(e.clientX, e.clientY) ? 'grab' : '');
+      setCursor(onControl ? '' : timerHover ? 'pointer' : e.target === grip && hit(e.clientX, e.clientY) ? 'grab' : '');
     }
   });
   document.addEventListener('mouseleave', () => { timerHover = false; });
