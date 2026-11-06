@@ -253,9 +253,10 @@
     if (op !== lastOpacity) { cvs.style.opacity = op; lastOpacity = op; }
     const show = drag || (!overText && !mug.hidden && !clean);
     if (show) {
-      grip.style.transform = `translate(${b.x0}px, ${b.y0}px)`;
-      grip.style.width = `${b.x1 - b.x0}px`;
-      grip.style.height = `${b.y1 - b.y0}px`;
+      const pad = ch;                            // same tolerance hit() gives the handle
+      grip.style.transform = `translate(${b.x0 - pad}px, ${b.y0 - pad}px)`;
+      grip.style.width = `${b.x1 - b.x0 + pad * 2}px`;
+      grip.style.height = `${b.y1 - b.y0 + pad * 2}px`;
     }
     if (show !== gripShown) { grip.style.display = show ? 'block' : 'none'; gripShown = show; }
   }
@@ -537,8 +538,11 @@
     const b = timerRect();
     // the cloth wipes the timer too: every column it has already passed is gone
     const wiped = clean && clean.wipeCol != null ? clean.wipeCol : -1;
+    // the visible box hugs the text (right-aligned); the clickable area (timerRect) stays at its
+    // widest, so a pointer that came in over the longer label doesn't fall off when it shrinks
+    const vc0 = Math.max(b.c0, b.c1 - (timerLabel.length + PAD_X * 2) + 1);
     for (let r = Math.max(0, b.r0); r <= b.r1; r++)
-      for (let c = Math.max(b.c0, wiped + 1); c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
+      for (let c = Math.max(vc0, wiped + 1); c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
     const r = b.r0 + PAD_Y, a = clean ? .4 : timerHover ? 1 : .7;
     for (let k = 0; k < timerLabel.length; k++) {
       const c = b.c1 - PAD_X - (timerLabel.length - 1) + k;   // right-aligned, toward the mug
