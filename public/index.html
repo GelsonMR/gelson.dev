@@ -73,11 +73,12 @@
     nav li + li, .contact li + li { margin-top: 0; }
     footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); }
     @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
-    /* ASCII coffee background: behind the content, never steals clicks from links */
-    #coffee { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -1; touch-action: none; }
-    @media not ((hover: hover) and (pointer: fine)) { #coffee { pointer-events: none; touch-action: auto; } }
-    /* no side gutter: the mug sits behind the text, so keep it faint enough not to hurt reading */
-    @media (max-width: 72rem) { #coffee { opacity: 0.16; } }
+    /* ASCII coffee background: behind the content, never steals clicks from links.
+       Input is read by coffee.js at the window level, so the canvas itself ignores the pointer. */
+    #coffee { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: -1; pointer-events: none; }
+    @media (prefers-reduced-motion: no-preference) { #coffee { transition: opacity 0.3s ease; } }
+    /* the "table": empty space at the end of the page where the mug can be played with, on any screen */
+    .coffee-table { height: 50vh; }
   </style>
 </head>
 <body>
@@ -215,6 +216,7 @@
   <footer>
     <p>Want to work together? <a href="mailto:gelsonmarianorodrigues@gmail.com">GelsonMarianoRodrigues@gmail.com</a></p>
   </footer>
+  <div class="coffee-table" aria-hidden="true"></div>
   <canvas id="coffee" aria-hidden="true"></canvas>
   <script src="/coffee.js" defer></script>
 </body>

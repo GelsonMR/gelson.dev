@@ -18,7 +18,6 @@
   };
   const mqDark = matchMedia('(prefers-color-scheme: dark)');
   const mqCalm = matchMedia('(prefers-reduced-motion: reduce)');
-  const mqFine = matchMedia('(hover: hover) and (pointer: fine)');
   let COL;
   function applyTheme() {
     COL = { ...PALETTE[mqDark.matches ? 'dark' : 'light'] };
@@ -29,8 +28,6 @@
   applyTheme();
   mqDark.addEventListener('change', () => { applyTheme(); dirty = true; });
   mqCalm.addEventListener('change', () => { dirty = true; });
-  let interactive = mqFine.matches;             // mouse/trackpad only; on touch, just the steam
-  mqFine.addEventListener('change', () => { interactive = mqFine.matches; if (!interactive) release(); });
   const G = 1500;            // gravity for the handle pendulum (px/s²)
   const FALL_G = 2400;       // gravity for the mug falling onto the table
   const CLEAN_DELAY = 20;    // seconds until the automatic cleanup
@@ -180,16 +177,31 @@
     return null;
   }
 
-  cvs.addEventListener('pointerdown', e => {
-    if (clean || !interactive) return;
+  // The canvas sits behind the page (pointer-events: none), so input is read at the window level.
+  // Mouse: the mug can be grabbed anywhere, even behind text, except over a link or control.
+  // Touch: only through the "grip", an invisible box over the mug that exists only while the
+  // mug sits over empty space (the side gutter or the table at the end of the page), so it
+  // never blocks scrolling over the text.
+  const setCursor = c => { document.documentElement.style.cursor = c; };
+  const isControl = t => !!(t && t.closest && t.closest('a, button, input, textarea, select, label, summary'));
+
+  const grip = document.createElement('div');
+  grip.setAttribute('aria-hidden', 'true');
+  grip.style.cssText = 'position:fixed;left:0;top:0;z-index:1;touch-action:none;display:none;-webkit-tap-highlight-color:transparent';
+  document.body.appendChild(grip);
+
+  addEventListener('pointerdown', e => {
+    if (clean) return;
+    const touch = e.pointerType !== 'mouse';
+    if (isControl(e.target)) return;
+    if (touch && e.target !== grip && !inTimer(e.clientX, e.clientY)) return;
     setPtr(e);
     // reset pointer history: in idle mode it's sampled slowly, and a jump would jolt the mug
     ptr.px = ptr.x; ptr.py = ptr.y; ptr.vx = ptr.vy = ptr.ax = ptr.ay = 0;
-    if (inTimer(e.clientX, e.clientY)) { e.preventDefault(); startClean(); return; }
-    const h = hit(e.clientX, e.clientY);
+    if (inTimer(e.clientX, e.clientY) && !overText) { e.preventDefault(); startClean(); return; }
+    const h = hit(e.clientX, e.clientY) || (touch && e.target === grip ? 'body' : null);
     if (!h) return;
-    e.preventDefault();
-    cvs.setPointerCapture(e.pointerId);
+    e.preventDefault();                          // no text selection, no scroll
     drag = h;
     if (h === 'body') {
       dragOff.x = mug.cx - e.clientX;
@@ -201,16 +213,51 @@
       mug.mode = 'handle';
       mug.om = 0;
     }
-    cvs.style.cursor = 'grabbing';
-  });
+    setCursor('grabbing');
+    document.documentElement.style.userSelect = 'none';
+  }, { capture: true });
 
   addEventListener('pointermove', e => {
-    if (!interactive) return;
+    if (e.pointerType !== 'mouse' && !drag) return;
     setPtr(e);
-    timerHover = !drag && inTimer(e.clientX, e.clientY);
-    if (!drag && !clean) cvs.style.cursor = timerHover ? 'pointer' : hit(e.clientX, e.clientY) ? 'grab' : 'default';
+    if (e.pointerType !== 'mouse') return;
+    timerHover = !drag && !overText && inTimer(e.clientX, e.clientY);
+    if (!drag && !clean) {
+      const onControl = isControl(e.target);
+      setCursor(onControl ? '' : timerHover ? 'pointer' : hit(e.clientX, e.clientY) ? 'grab' : '');
+    }
   });
   document.addEventListener('mouseleave', () => { timerHover = false; });
+
+  // Where is the mug? Over the text (faint, no touch grip) or over empty space (full, grabbable).
+  let overText = false, lastOpacity = '', gripShown = false;
+  function mugBox() {
+    const hw = mug.w / 2, hh = mug.h / 2;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const add = ([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); };
+    for (const p of [[-hw, -hh], [hw, -hh], [-hw, hh], [hw, hh]]) add(toWorld(p[0], p[1]));
+    for (let k = 0; k <= 8; k++) {
+      const t = -Math.PI / 2 + k / 8 * Math.PI;
+      add(toWorld(mug.hcx + Math.cos(t) * mug.hR, mug.hcy + Math.sin(t) * mug.hR));
+    }
+    return { x0, y0, x1, y1 };
+  }
+  function updateLayout() {
+    if (!drag && document.documentElement.style.userSelect) document.documentElement.style.userSelect = '';
+    const b = mugBox();
+    const col = document.body.getBoundingClientRect();
+    const end = (document.querySelector('footer') || document.body).getBoundingClientRect().bottom;
+    overText = !mug.hidden && b.x1 > col.left && b.x0 < col.right && b.y0 < end;
+    const op = overText && !drag ? '0.16' : '1';
+    if (op !== lastOpacity) { cvs.style.opacity = op; lastOpacity = op; }
+    const show = drag || (!overText && !mug.hidden && !clean);
+    if (show) {
+      grip.style.transform = `translate(${b.x0}px, ${b.y0}px)`;
+      grip.style.width = `${b.x1 - b.x0}px`;
+      grip.style.height = `${b.y1 - b.y0}px`;
+    }
+    if (show !== gripShown) { grip.style.display = show ? 'block' : 'none'; gripShown = show; }
+  }
 
   function release() {
     if (!drag) return;
@@ -218,7 +265,8 @@
     mug.mode = 'free';
     mug.vx = clamp(ptr.vx * .2, -600, 600);
     mug.vy = clamp(ptr.vy * .2, -600, 600);
-    cvs.style.cursor = 'default';
+    setCursor('');
+    document.documentElement.style.userSelect = '';
   }
   addEventListener('pointerup', release);
   addEventListener('pointercancel', release);
@@ -501,7 +549,7 @@
       phase: 0, t: 0, a0: normAngle(mug.a), x0: mug.cx, y0: mug.cy,
       topRow: clamp(minRow - 1, rows - Math.max(4, Math.round(rows * .25)), rows - 3), hand: { x: mug.cx, y: -ch * 2 }, cloth: null, chase,
     };
-    if (!chase) { mug.mode = 'clean'; cvs.style.cursor = 'default'; }
+    if (!chase) { mug.mode = 'clean'; setCursor(''); }
     spillTimer = null;
     timerHover = false;
     timerLabel = 'Cleaning…';
@@ -521,7 +569,7 @@
       cl.phase = 1; cl.t = 0;
       cl.a0 = normAngle(mug.a); cl.x0 = mug.cx; cl.y0 = mug.cy;
       mug.mode = 'clean'; mug.om = 0;
-      cvs.style.cursor = 'default';
+      setCursor('');
     }
   }
 
@@ -796,6 +844,7 @@
 
   let last = performance.now();
   function frame(now) {
+    updateLayout();
     if (isIdle()) {
       idleAcc += Math.min((now - last) / 1000, .25);
       last = now;
