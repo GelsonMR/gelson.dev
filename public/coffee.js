@@ -198,7 +198,7 @@
     setPtr(e);
     // reset pointer history: in idle mode it's sampled slowly, and a jump would jolt the mug
     ptr.px = ptr.x; ptr.py = ptr.y; ptr.vx = ptr.vy = ptr.ax = ptr.ay = 0;
-    if (inTimer(e.clientX, e.clientY) && !overText) { e.preventDefault(); startClean(); return; }
+    if (inTimer(e.clientX, e.clientY)) { e.preventDefault(); startClean(); return; }
     const h = hit(e.clientX, e.clientY) || (touch && e.target === grip ? 'body' : null);
     if (!h) return;
     e.preventDefault();                          // no text selection, no scroll
@@ -221,7 +221,7 @@
     if (e.pointerType !== 'mouse' && !drag) return;
     setPtr(e);
     if (e.pointerType !== 'mouse') return;
-    timerHover = !drag && !overText && inTimer(e.clientX, e.clientY);
+    timerHover = !drag && inTimer(e.clientX, e.clientY);
     if (!drag && !clean) {
       const onControl = isControl(e.target);
       setCursor(onControl ? '' : timerHover ? 'pointer' : hit(e.clientX, e.clientY) ? 'grab' : '');
@@ -502,14 +502,29 @@
   // The timer is drawn on the grid itself: a transparent box that dims what's behind it.
   let timerLabel = null;                         // current text, or null when hidden
   const PAD_X = 3, PAD_Y = 1;                    // 3 characters on the sides, 1 row above and below
-  const MARGIN_X = 3, MARGIN_Y = 1;              // distance from the left edge (columns) and from the bottom (rows)
+  const MARGIN_X = 3, MARGIN_Y = 1;              // distance from the right edge (columns) and from the bottom (rows)
   const BEHIND_ALPHA = .3;                       // whatever is behind the box shows at 30% opacity
   const BOX_W = 'Cleaning in 20'.length + PAD_X * 2;
   const BOX_H = 1 + PAD_Y * 2;
 
+  // Bottom-right corner, next to where the coffee spills. If the mug is sitting there, the box
+  // goes just above it. The position is picked once, when the timer shows up, so it never hops
+  // around while the mug is being dragged.
+  let timerBox = null;
+  function placeTimer() {
+    const c1 = cols - 1 - MARGIN_X, c0 = c1 - BOX_W + 1;
+    let r1 = rows - 1 - MARGIN_Y;
+    if (!mug.hidden) {
+      const b = mugBox();
+      const mc0 = Math.floor((b.x0 - ox) / cw), mc1 = Math.floor((b.x1 - ox) / cw);
+      const mr0 = Math.floor((b.y0 - oy) / ch), mr1 = Math.floor((b.y1 - oy) / ch);
+      if (mc1 >= c0 && mc0 <= c1 && mr1 >= r1 - BOX_H + 1) r1 = Math.max(BOX_H - 1, mr0 - 2);
+    }
+    return { c0, c1, r0: r1 - BOX_H + 1, r1 };
+  }
   function timerRect() {
-    const c0 = MARGIN_X, r1 = rows - 1 - MARGIN_Y;
-    return { c0, c1: c0 + BOX_W - 1, r0: r1 - BOX_H + 1, r1 };
+    if (!timerBox) timerBox = placeTimer();
+    return timerBox;
   }
 
   function inTimer(x, y) {
@@ -522,7 +537,7 @@
 
   function updateTimer(dt) {
     if (clean) { timerLabel = 'Cleaning…'; return; }
-    if (spillTimer === null) { timerLabel = null; timerHover = false; return; }
+    if (spillTimer === null) { timerLabel = null; timerBox = null; timerHover = false; return; }
     if (!timerHover) spillTimer -= dt;
     if (spillTimer <= 0) { startClean(); return; }
     timerLabel = timerHover ? 'Clean now' : `Cleaning in ${Math.ceil(spillTimer)}`;
@@ -535,7 +550,7 @@
       for (let c = b.c0; c <= Math.min(cols - 1, b.c1); c++) gAlpha[r * cols + c] *= BEHIND_ALPHA; // dims what's behind
     const r = b.r0 + PAD_Y, a = clean ? .4 : timerHover ? 1 : .7;
     for (let k = 0; k < timerLabel.length; k++) {
-      const c = b.c0 + PAD_X + k;
+      const c = b.c1 - PAD_X - (timerLabel.length - 1) + k;   // right-aligned, toward the mug
       if (timerLabel[k] !== ' ' && c < cols && r >= 0) put(r * cols + c, timerLabel[k], COL.ink, a);
     }
   }
@@ -632,6 +647,7 @@
     resetMug();
     spillAcc = 0;
     timerLabel = null;
+    timerBox = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -830,6 +846,7 @@
     clean = null;
     spillTimer = null;
     timerLabel = null;
+    timerBox = null;
     timerHover = false;
     steam.length = 0;
     quiet = 0; dirty = true;
