@@ -507,25 +507,13 @@
   const BOX_W = 'Cleaning in 20'.length + PAD_X * 2;
   const BOX_H = 1 + PAD_Y * 2;
 
-  // Bottom-right corner, next to where the coffee spills. If the mug is sitting there, the box
-  // goes just above it. The position is picked once, when the timer shows up, so it never hops
-  // around while the mug is being dragged.
-  let timerBox = null;
-  function placeTimer() {
-    const c1 = cols - 1 - MARGIN_X, c0 = c1 - BOX_W + 1;
-    let r1 = rows - 1 - MARGIN_Y;
-    if (!mug.hidden) {
-      const b = mugBox();
-      const mc0 = Math.floor((b.x0 - ox) / cw), mc1 = Math.floor((b.x1 - ox) / cw);
-      const mr0 = Math.floor((b.y0 - oy) / ch), mr1 = Math.floor((b.y1 - oy) / ch);
-      if (mc1 >= c0 && mc0 <= c1 && mr1 >= r1 - BOX_H + 1) r1 = Math.max(BOX_H - 1, mr0 - 2);
-    }
-    return { c0, c1, r0: r1 - BOX_H + 1, r1 };
-  }
+  // Always the same spot: bottom-right corner, next to where the coffee spills.
   function timerRect() {
-    if (!timerBox) timerBox = placeTimer();
-    return timerBox;
+    const c1 = cols - 1 - MARGIN_X;
+    const r1 = rows - 1 - MARGIN_Y;
+    return { c0: c1 - BOX_W + 1, c1, r0: r1 - BOX_H + 1, r1 };
   }
+
 
   function inTimer(x, y) {
     if (!timerLabel || clean) return false;
@@ -537,7 +525,7 @@
 
   function updateTimer(dt) {
     if (clean) { timerLabel = 'Cleaning…'; return; }
-    if (spillTimer === null) { timerLabel = null; timerBox = null; timerHover = false; return; }
+    if (spillTimer === null) { timerLabel = null; timerHover = false; return; }
     if (!timerHover) spillTimer -= dt;
     if (spillTimer <= 0) { startClean(); return; }
     timerLabel = timerHover ? 'Clean now' : `Cleaning in ${Math.ceil(spillTimer)}`;
@@ -647,7 +635,7 @@
     resetMug();
     spillAcc = 0;
     timerLabel = null;
-    timerBox = null;
+   
   }
 
   // ---------------------------------------------------------------------------
@@ -846,7 +834,7 @@
     clean = null;
     spillTimer = null;
     timerLabel = null;
-    timerBox = null;
+   
     timerHover = false;
     steam.length = 0;
     quiet = 0; dirty = true;
